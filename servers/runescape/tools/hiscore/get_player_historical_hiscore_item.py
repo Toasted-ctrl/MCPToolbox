@@ -65,7 +65,7 @@ def get_player_historical_hiscore_item(
                 StagingHiscoresT.is_skill,
                 StagingHiscoresT.progression_points)
             .filter(
-                StagingHiscoresT.id == player_id,
+                StagingHiscoresT.user_id == player_id,
                 StagingHiscoresT.name == skill_or_activity,
                 StagingHiscoresT.ingested_date >= request_date
             )
