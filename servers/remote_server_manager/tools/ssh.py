@@ -6,6 +6,8 @@ import threading
 import time
 import re
 
+from shared.errors import NotFoundError
+
 from ..server import mcp
 
 
@@ -205,14 +207,15 @@ def send_to_ssh_session(
         session = _ssh_sessions.get(session_id)
 
     if not session:
-        raise Exception(f"Session {session_id} not found")
+        raise NotFoundError(f"Session {session_id} not found")
 
     # Check for forbidden commands
     forbidden_pattern = _is_command_forbidden(input)
     if forbidden_pattern:
-        raise Exception(
+        raise ValueError(
             f"Command blocked: detected forbidden pattern '{forbidden_pattern}'. "
-            f"This operation is not permitted for security reasons."
+            f"This operation is not permitted for security reasons. "
+            f"The session is still open; do not retry this command, but continue with a different approach or ask the user."
         )
 
     try:
@@ -246,7 +249,7 @@ def read_from_ssh_session(
         session = _ssh_sessions.get(session_id)
 
     if not session:
-        raise Exception(f"Session {session_id} not found")
+        raise NotFoundError(f"Session {session_id} not found")
 
     try:
         output = _read_available(session['stdout'], session['stderr'], timeout)
