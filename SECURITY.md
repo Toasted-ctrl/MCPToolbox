@@ -28,7 +28,9 @@ The `remote_server_manager` server gives an AI agent interactive shell access to
 | `mkfs`, `wipefs`, `fdisk`, `sfdisk`, `gdisk`, `cfdisk`, `parted` | `fdisk -l`, `parted -l`, `lsblk` |
 | Package removal with `apt`, `yum`, `dnf`, `pacman` and `zypper` | Installing and updating packages |
 | `systemctl stop`, `service <name> stop`, `kill -9`, `killall`, `pkill` | `systemctl status`, `systemctl restart` |
-| `userdel`, `passwd -d`, `usermod -d` | |
+| Creating or deleting users and groups: `useradd`, `adduser`, `userdel`, `deluser`, `newusers`, `groupadd`, `addgroup`, `groupdel`, `delgroup`, `vipw`, `vigr` | Looking up users: `id`, `whoami`, `getent passwd`, `cat /etc/passwd` |
+| Writing to `/etc/passwd`, `/etc/shadow`, `/etc/group` or `/etc/gshadow` with `>`, `>>`, `tee` or `sed -i` | |
+| `passwd -d`, `usermod -d` | |
 | Recursive `chmod` / `chown` / `chgrp` on `/` or top-level system directories | Recursive changes on subdirectories, e.g. `/var/www/app` |
 | `iptables -F`, `ufw reset` | |
 

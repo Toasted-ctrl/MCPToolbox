@@ -41,8 +41,11 @@ _FORBIDDEN_COMMANDS = [
     r'\bkill\s+-9\b',
     r'\bkillall\b',
     r'\bpkill\b',
-    # User management
-    r'\buserdel\b',
+    # User management - creating or deleting users and groups
+    r'\b(?:useradd|adduser|userdel|deluser|newusers|groupadd|addgroup|groupdel|delgroup|vipw|vigr)\b',
+    r'>\s*/etc/(?:passwd|shadow|group|gshadow)\b',             # Editing account files directly (> and >>)
+    r'\btee\b.*\s/etc/(?:passwd|shadow|group|gshadow)\b',
+    r'\bsed\b.*\s-i.*\s/etc/(?:passwd|shadow|group|gshadow)\b',
     r'\bpasswd\s+-[dD]',
     r'\busermod\s+-[dD]',
     # File system operations - recursive permission/ownership changes on / or system directories
