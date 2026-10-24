@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-remote-server-manager
+  namespace: mcp-remote-server-manager
+  labels:
+    app: mcp-remote-server-manager
+
+    # Below Keel section is to automate pulling the new image if a new semver version is detected.
+    # Remove entirely if not needed / Keel is not installed.
+    keel.sh/policy: major
+    keel.sh/trigger: poll
+  annotations:
+    keel.sh/pollSchedule: "@every 1m"
+
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-remote-server-manager
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+
+  template:
+    metadata:
+      labels:
+        app: mcp-remote-server-manager
+
+    spec:
+      # Shutdown window for HTTP connections
+      terminationGracePeriodSeconds: 60
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: mcp-remote-server-manager
+          image: "storage01:5000/mcp-remote_server_manager:0.0.2"
+          imagePullPolicy: Always
+
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: mcp-remote-server-manager-config
+            - secretRef:
+                name: mcp-remote-server-manager-secrets
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+
+          livenessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          readinessProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          startupProbe:
+            tcpSocket:
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 10
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 100Mi

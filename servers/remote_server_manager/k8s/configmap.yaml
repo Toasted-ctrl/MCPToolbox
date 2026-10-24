@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-remote-server-manager-config
+  namespace: mcp-remote-server-manager
+data:
+  APP_ENV: "production"
+  LOG_LEVEL: "TEST"
+  PG_PORT: "TEST"
+  PG_DIALECT: "TEST"
+  PG_DRIVER: "TEST"
+  MCP_PORT: "8000"
+  MCP_NAME: "Remote Server Manager MCP"
+  PROMETHEUS_PORT: "9000"

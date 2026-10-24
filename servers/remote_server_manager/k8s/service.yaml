@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-remote-server-manager-service
+  namespace: mcp-remote-server-manager
+  labels:
+    app: mcp-remote-server-manager
+spec:
+  selector:
+    app: mcp-remote-server-manager
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8000
+    - name: metrics
+      protocol: TCP
+      port: 9090
+      targetPort: 9090
+  type: ClusterIP

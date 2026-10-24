@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from .logger import get_logger
 
+
 log = get_logger()
 
 
@@ -14,7 +15,6 @@ def get_db_session(db_url: str) -> Generator[Session]:
     Rollback will happen automatically upon detection of issues.
     Does not autocommit or autoflush, committing and flushing will
     require manual actions."""
-
     engine = create_engine(url=db_url, echo=False)
     SessionLocal = sessionmaker(
         bind=engine,
@@ -24,7 +24,8 @@ def get_db_session(db_url: str) -> Generator[Session]:
     session = SessionLocal()
     try:
         yield session
-    except Exception:
+    except Exception as e:
+        log.exception(f"Error during database session: {str(e)}. Rolling back changes.")
         session.rollback()
         raise
     finally:

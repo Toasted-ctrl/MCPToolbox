@@ -1,0 +1,15 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: mcp-remote-server-manager
+  namespace: mcp-remote-server-manager
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: mcp-remote-server-manager
+  endpoints:
+    - port: metrics
+      interval: 15s
+      path: /metrics
