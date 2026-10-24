@@ -1,7 +1,7 @@
-from datetime import datetime
-from sqlalchemy import String, func, DateTime, text, UUID, Boolean, Integer, BigInteger, TIMESTAMP
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 import uuid
+from datetime import datetime
+from sqlalchemy import String, text, UUID, Boolean, Integer, BigInteger, TIMESTAMP
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
 class Base(DeclarativeBase):
