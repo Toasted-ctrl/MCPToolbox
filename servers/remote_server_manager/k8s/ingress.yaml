@@ -1,0 +1,18 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: mcp-remote-server-manager-ingress
+  namespace: mcp-remote-server-manager
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: mcp-remote-server-manager.k8s.internal
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: mcp-remote-server-manager-service
+                port:
+                  number: 80
