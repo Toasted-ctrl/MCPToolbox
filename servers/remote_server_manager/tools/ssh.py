@@ -4,10 +4,18 @@ import paramiko
 import uuid
 import threading
 import time
-import re
 
 from shared.errors import NotFoundError
+from shared.logger import get_logger
 
+from ..config import config
+from ..restrictions import (
+    active_groups,
+    build_forbidden_patterns,
+    find_forbidden,
+    parse_allowed_networks,
+    resolve_allowed_address,
+)
 from ..server import mcp
 
 
@@ -15,50 +23,20 @@ from ..server import mcp
 _ssh_sessions: Dict[str, dict] = {}
 _session_lock = threading.Lock()
 
-# Forbidden command patterns - commands that should never be allowed
-# These are checked as substrings to catch variations like 'rm -rf /' or 'sudo rm -rf'
-_FORBIDDEN_COMMANDS = [
-    # Recursive removal (rm -r, rm -rf, rm -fR, rm -i -r, rm --recursive)
-    r'\brm\s+(?:-\S+\s+)*-[a-z]*r',
-    r'\brm\s+.*--recursive\b',
-    # System critical operations
-    r'\bdd\b.*\bof=/dev/(?!null\b)',    # dd writing to a device
-    r':\s*\(\s*\)\s*\{',                # Fork bomb :(){ :|:& };:
-    r'>\s*/dev/(?:sd|hd|vd|xvd|nvme|mmcblk|dm-|mapper/|disk/)',     # Writing to block devices
-    r'(?<!>)>(?!>)\s*/(?:bin|boot|etc|lib\w*|sbin|usr)/',          # Overwriting system files (>> append is allowed)
-    # Disk formatting/partitioning (listing with -l is allowed)
-    r'\bmkfs\b',
-    r'\b[scg]?fdisk\b(?!\s+-l\b)',
-    r'\bparted\b(?!\s+-l\b)',
-    r'\bwipefs\b',
-    # Package management - uninstalling critical packages
-    r'\bapt\s+(?:remove|purge)\b',
-    r'\byum\s+remove\b',
-    r'\bdnf\s+remove\b',
-    r'\bpacman\s+-[Rr]',
-    r'\bzypper\s+remove\b',
-    # Service management - stopping critical services
-    r'\bsystemctl\s+stop\b',
-    r'\bservice\s+[^\s]+\s+stop\b',
-    r'\bkill\s+-9\b',
-    r'\bkillall\b',
-    r'\bpkill\b',
-    # User management - creating or deleting users and groups
-    r'\b(?:useradd|adduser|userdel|deluser|newusers|groupadd|addgroup|groupdel|delgroup|vipw|vigr)\b',
-    r'>\s*/etc/(?:passwd|shadow|group|gshadow)\b',             # Editing account files directly (> and >>)
-    r'\btee\b.*\s/etc/(?:passwd|shadow|group|gshadow)\b',
-    r'\bsed\b.*\s-i.*\s/etc/(?:passwd|shadow|group|gshadow)\b',
-    r'\bpasswd\s+-[dD]',
-    r'\busermod\s+-[dD]',
-    # File system operations - recursive permission/ownership changes on / or system directories
-    r'\bch(?:mod|own|grp)\b.*(?:\s-[a-z]*r|--recursive\b).*\s/(?:bin|boot|etc|home|lib\w*|opt|root|sbin|usr|var)?/?(?=\s|$)',
-    # Network operations
-    r'\biptables\s+-[Ff]',
-    r'\bufw\s+reset\b',
-]
+# Forbidden command patterns, resolved from the restriction groups enabled in the configuration
+_FORBIDDEN_PATTERNS = build_forbidden_patterns(
+    enabled=config.ENABLED_RESTRICTIONS,
+    disabled=config.DISABLED_RESTRICTIONS,
+    extra_patterns=config.EXTRA_FORBIDDEN_PATTERNS,
+)
+get_logger(config.MCP_NAME).info(f"Active command restrictions: {', '.join(active_groups(_FORBIDDEN_PATTERNS))}")
 
-# Compile forbidden patterns for efficiency
-_FORBIDDEN_PATTERNS = [re.compile(pattern, re.IGNORECASE) for pattern in _FORBIDDEN_COMMANDS]
+# Hosts that sessions may be created with, from ALLOWED_HOSTS. Empty means all hosts are allowed.
+_ALLOWED_NETWORKS = parse_allowed_networks(config.ALLOWED_HOSTS)
+if _ALLOWED_NETWORKS:
+    get_logger(config.MCP_NAME).info(f"Allowed hosts: {', '.join(str(n) for n in _ALLOWED_NETWORKS)}")
+else:
+    get_logger(config.MCP_NAME).warning("ALLOWED_HOSTS is not set, sessions can be created with any host")
 
 
 def _read_available(stdout, stderr, timeout: float = 0.5) -> str:
@@ -122,12 +100,22 @@ def create_ssh_session(
     - Programs that require a TTY (sudo, editors, etc.) work correctly
     - Better interaction with interactive commands
     """
+    # Check the host before connecting. Raised outside the try below so the error reaches the client unsanitized.
+    address = server_name
+    if _ALLOWED_NETWORKS:
+        address = resolve_allowed_address(_ALLOWED_NETWORKS, server_name, port)
+        if address is None:
+            raise ValueError(
+                f"Host '{server_name}' is not in the list of allowed hosts. "
+                f"Do not retry with this host; ask the user to add it to ALLOWED_HOSTS if access is needed."
+            )
+
     client = paramiko.SSHClient()
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
     try:
         client.connect(
-            hostname=server_name,
+            hostname=address,
             username=username,
             password=password,
             port=port,
@@ -178,17 +166,6 @@ def create_ssh_session(
         raise Exception(f"Failed to create SSH session: {str(e)}")
 
 
-def _is_command_forbidden(input_str: str) -> Optional[str]:
-    """
-    Check if the input contains any forbidden command patterns.
-    Returns the matched pattern if forbidden, None otherwise.
-    """
-    for pattern in _FORBIDDEN_PATTERNS:
-        if pattern.search(input_str):
-            return pattern.pattern
-    return None
-
-
 @mcp.tool(
     name="send_to_ssh_session",
     version="0.0.1",
@@ -210,10 +187,11 @@ def send_to_ssh_session(
         raise NotFoundError(f"Session {session_id} not found")
 
     # Check for forbidden commands
-    forbidden_pattern = _is_command_forbidden(input)
-    if forbidden_pattern:
+    forbidden = find_forbidden(_FORBIDDEN_PATTERNS, input)
+    if forbidden:
+        group, pattern = forbidden
         raise ValueError(
-            f"Command blocked: detected forbidden pattern '{forbidden_pattern}'. "
+            f"Command blocked by the '{group}' restriction: detected forbidden pattern '{pattern}'. "
             f"This operation is not permitted for security reasons. "
             f"The session is still open; do not retry this command, but continue with a different approach or ask the user."
         )

@@ -11,4 +11,12 @@ data:
   PG_DRIVER: "TEST"
   MCP_PORT: "8000"
   MCP_NAME: "Remote Server Manager MCP"
-  PROMETHEUS_PORT: "9000"
+  PROMETHEUS_PORT: "9090"
+  # Command restrictions, see SECURITY.md for the available groups
+  ENABLED_RESTRICTIONS: ""
+  DISABLED_RESTRICTIONS: "power"
+  # Additional regex patterns to block, one per line, e.g.:
+  # EXTRA_FORBIDDEN_PATTERNS: |
+  #   \bnc\b
+  #   \bsocat\b
+  EXTRA_FORBIDDEN_PATTERNS: ""
