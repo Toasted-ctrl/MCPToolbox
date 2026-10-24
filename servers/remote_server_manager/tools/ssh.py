@@ -16,19 +16,19 @@ _session_lock = threading.Lock()
 # Forbidden command patterns - commands that should never be allowed
 # These are checked as substrings to catch variations like 'rm -rf /' or 'sudo rm -rf'
 _FORBIDDEN_COMMANDS = [
-    # Directory removal - dangerous
-    r'rm\s+-r[\w\s]*',
-    r'rm\s+-f[\w\s]*',
-    r'rm\s+-[rf]+',
-    r'rmdir\b',
+    # Recursive removal (rm -r, rm -rf, rm -fR, rm -i -r, rm --recursive)
+    r'\brm\s+(?:-\S+\s+)*-[a-z]*r',
+    r'\brm\s+.*--recursive\b',
     # System critical operations
-    r'\bdd\b',
-    r':\s*\{',      # Block devices
-    r'\s*>\s*/',    # Writing to root directory
-    # Disk formatting/partitioning
+    r'\bdd\b.*\bof=/dev/(?!null\b)',    # dd writing to a device
+    r':\s*\(\s*\)\s*\{',                # Fork bomb :(){ :|:& };:
+    r'>\s*/dev/(?:sd|hd|vd|xvd|nvme|mmcblk|dm-|mapper/|disk/)',     # Writing to block devices
+    r'(?<!>)>(?!>)\s*/(?:bin|boot|etc|lib\w*|sbin|usr)/',          # Overwriting system files (>> append is allowed)
+    # Disk formatting/partitioning (listing with -l is allowed)
     r'\bmkfs\b',
-    r'\bfdisk\b',
-    r'\bpartition\b',
+    r'\b[scg]?fdisk\b(?!\s+-l\b)',
+    r'\bparted\b(?!\s+-l\b)',
+    r'\bwipefs\b',
     # Package management - uninstalling critical packages
     r'\bapt\s+(?:remove|purge)\b',
     r'\byum\s+remove\b',
@@ -45,9 +45,8 @@ _FORBIDDEN_COMMANDS = [
     r'\buserdel\b',
     r'\bpasswd\s+-[dD]',
     r'\busermod\s+-[dD]',
-    # File system operations
-    r'\bchmod\s+-[0-7]+\s+/',
-    r'\bchown\s+-[Rr]',
+    # File system operations - recursive permission/ownership changes on / or system directories
+    r'\bch(?:mod|own|grp)\b.*(?:\s-[a-z]*r|--recursive\b).*\s/(?:bin|boot|etc|home|lib\w*|opt|root|sbin|usr|var)?/?(?=\s|$)',
     # Network operations
     r'\biptables\s+-[Ff]',
     r'\bufw\s+reset\b',

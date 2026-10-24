@@ -10,7 +10,37 @@
 
 A collection of Model Context Protocol (MCP) servers built with Python and FastMCP.
 
-The repository currently contains two servers, both ready to run locally, build as Docker images, and deploy to Kubernetes.
+The repository currently contains three servers, all ready to run locally, build as Docker images, and deploy to Kubernetes.
+
+| Server | Description |
+|---|---|
+| `example` | Minimal reference server showing how tools are structured. Use it as a template for new servers. |
+| `runescape` | RuneScape Grand Exchange prices and player hiscore tracking, backed by PostgreSQL. |
+| `remote_server_manager` | Opens persistent, interactive SSH shell sessions on remote hosts so an AI agent can run commands. |
+
+All servers share the code in `shared/` (configuration, logging, database, error sanitization and Prometheus middleware), expose MCP over streamable HTTP at `/mcp` on `MCP_PORT`, and serve Prometheus metrics on `PROMETHEUS_PORT`.
+
+## Remote Server Manager
+
+Provides the following tools:
+
+| Tool | Description |
+|---|---|
+| `create_ssh_session` | Connects to a host (password or key auth) and starts a shell with a PTY. Returns a `session_id`. |
+| `send_to_ssh_session` | Sends a command or input to a session. A newline is appended automatically. |
+| `read_from_ssh_session` | Reads buffered output from a session. Call repeatedly for long-running commands. |
+| `list_ssh_sessions` | Lists open sessions with their host, user, activity timestamps and status. |
+| `close_ssh_session` | Closes a session and frees its resources. |
+
+> [!WARNING]
+> This server gives an AI agent shell access to your machines. `send_to_ssh_session` blocks a list of destructive commands (recursive `rm`, `mkfs`, writing to disk devices, package removal, `systemctl stop`, `kill -9`, etc.), but that blocklist is a guardrail, not a security boundary. The MCP endpoint has no authentication and host keys are not verified.
+>
+> Read [SECURITY.md](SECURITY.md) for the full list of blocked commands, known limitations and hardening recommendations before deploying it.
+
+Notes:
+
+- **Sessions live in memory.** They are lost on restart and are not shared between pods, so keep `replicas: 1`.
+- **Key-based auth** uses the default keys of the user running the server (`~/.ssh`). In Kubernetes, mount the key into the container if you are not using passwords.
 
 ## Quick Start
 
@@ -48,15 +78,19 @@ The script also supports version increments, cache control, and pushing images t
 
 ### 3. Kubernetes
 
-Both servers include complete Kubernetes manifests under their respective `k8s/` directories:
+Each server includes complete Kubernetes manifests under their respective `k8s/` directories:
 ```text
 servers/
 ├── example/
+│   └── k8s/
+├── remote_server_manager/
 │   └── k8s/
 └── runescape/
     └── k8s/
 ```
 
+
+The `deployment-example.yaml` and `secrets-example.yaml` files are templates. Copy them to `deployment.yaml` and `secrets.yaml` (both are git-ignored), fill in your registry and credentials, and remove the example files from the directory before applying.
 
 After building and pushing an image, the manifests can be applied with `kubectl`:
 
