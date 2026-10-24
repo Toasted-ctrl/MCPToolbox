@@ -4,6 +4,7 @@ import paramiko
 import uuid
 import threading
 import time
+import re
 
 from ..server import mcp
 
@@ -11,6 +12,49 @@ from ..server import mcp
 # Session storage: {session_id: {'client': client, 'stdin': stdin, 'stdout': stdout, 'stderr': stderr}}
 _ssh_sessions: Dict[str, dict] = {}
 _session_lock = threading.Lock()
+
+# Forbidden command patterns - commands that should never be allowed
+# These are checked as substrings to catch variations like 'rm -rf /' or 'sudo rm -rf'
+_FORBIDDEN_COMMANDS = [
+    # Directory removal - dangerous
+    r'rm\s+-r[\w\s]*',
+    r'rm\s+-f[\w\s]*',
+    r'rm\s+-[rf]+',
+    r'rmdir\b',
+    # System critical operations
+    r'\bdd\b',
+    r':\s*\{',      # Block devices
+    r'\s*>\s*/',    # Writing to root directory
+    # Disk formatting/partitioning
+    r'\bmkfs\b',
+    r'\bfdisk\b',
+    r'\bpartition\b',
+    # Package management - uninstalling critical packages
+    r'\bapt\s+(?:remove|purge)\b',
+    r'\byum\s+remove\b',
+    r'\bdnf\s+remove\b',
+    r'\bpacman\s+-[Rr]',
+    r'\bzypper\s+remove\b',
+    # Service management - stopping critical services
+    r'\bsystemctl\s+stop\b',
+    r'\bservice\s+[^\s]+\s+stop\b',
+    r'\bkill\s+-9\b',
+    r'\bkillall\b',
+    r'\bpkill\b',
+    # User management
+    r'\buserdel\b',
+    r'\bpasswd\s+-[dD]',
+    r'\busermod\s+-[dD]',
+    # File system operations
+    r'\bchmod\s+-[0-7]+\s+/',
+    r'\bchown\s+-[Rr]',
+    # Network operations
+    r'\biptables\s+-[Ff]',
+    r'\bufw\s+reset\b',
+]
+
+# Compile forbidden patterns for efficiency
+_FORBIDDEN_PATTERNS = [re.compile(pattern, re.IGNORECASE) for pattern in _FORBIDDEN_COMMANDS]
 
 
 def _read_available(stdout, stderr, timeout: float = 0.5) -> str:
@@ -130,6 +174,17 @@ def create_ssh_session(
         raise Exception(f"Failed to create SSH session: {str(e)}")
 
 
+def _is_command_forbidden(input_str: str) -> Optional[str]:
+    """
+    Check if the input contains any forbidden command patterns.
+    Returns the matched pattern if forbidden, None otherwise.
+    """
+    for pattern in _FORBIDDEN_PATTERNS:
+        if pattern.search(input_str):
+            return pattern.pattern
+    return None
+
+
 @mcp.tool(
     name="send_to_ssh_session",
     version="0.0.1",
@@ -149,6 +204,14 @@ def send_to_ssh_session(
 
     if not session:
         raise Exception(f"Session {session_id} not found")
+
+    # Check for forbidden commands
+    forbidden_pattern = _is_command_forbidden(input)
+    if forbidden_pattern:
+        raise Exception(
+            f"Command blocked: detected forbidden pattern '{forbidden_pattern}'. "
+            f"This operation is not permitted for security reasons."
+        )
 
     try:
         # Send input with newline - ChannelStdinFile uses write(), not send()
