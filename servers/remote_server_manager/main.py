@@ -4,12 +4,16 @@ from shared.logger import get_logger
 
 from .config import config
 from .server import mcp
-from .tools.ssh import (
-    create_ssh_session,
-    close_ssh_session,
-    list_ssh_sessions,
-    read_from_ssh_session,
-    send_to_ssh_session
+from .tools.hosts import list_hosts
+from .tools.services import (
+    get_service_status,
+    list_services,
+    read_service_logs,
+    restart_service
+)
+from .tools.system import (
+    get_system_info,
+    list_processes
 )
 
 

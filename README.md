@@ -16,7 +16,7 @@ The repository currently contains three servers, all ready to run locally, build
 |---|---|
 | [`example`](servers/example) | Minimal reference server showing how tools are structured. Use it as a template for new servers. |
 | [`runescape`](servers/runescape) | RuneScape Grand Exchange prices and player hiscore tracking, backed by PostgreSQL. |
-| [`remote_server_manager`](servers/remote_server_manager/README.md) | Opens persistent, interactive SSH shell sessions on remote hosts so an AI agent can run commands. |
+| [`remote_server_manager`](servers/remote_server_manager/README.md) | Lets an AI agent inspect and manage remote Linux hosts over SSH through a fixed set of operations, without shell access. |
 
 All servers share the code in `shared/` (configuration, logging, database, error sanitization and Prometheus middleware), expose MCP over streamable HTTP at `/mcp` on `MCP_PORT`, and serve Prometheus metrics on `PROMETHEUS_PORT`.
 
