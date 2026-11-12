@@ -5,9 +5,6 @@ __pycache__/
 # ENV
 .env
 
-# UV
-uv.lock
-
 # k8s files
 secrets.yaml
 deployment.yaml
