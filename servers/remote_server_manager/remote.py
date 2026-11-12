@@ -1,8 +1,9 @@
+import shlex
+import socket
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Iterator, List
-import shlex
-import socket
+
 import paramiko
 
 from shared.logger import get_logger
@@ -10,9 +11,8 @@ from shared.logger import get_logger
 from .config import config
 from .inventory import PRIVATE_KEY, Host
 
-
-CONNECT_TIMEOUT = 10            # Seconds to establish the SSH connection
-COMMAND_TIMEOUT = 60            # Seconds a command may go without producing output
+CONNECT_TIMEOUT = 10  # Seconds to establish the SSH connection
+COMMAND_TIMEOUT = 60  # Seconds a command may go without producing output
 MAX_OUTPUT_BYTES = 64 * 1024
 
 
@@ -21,6 +21,7 @@ log = get_logger(config.MCP_NAME)
 
 class RemoteError(Exception):
     """Connection or command failure on a remote host. Its message is safe to return to the agent."""
+
     pass
 
 
@@ -38,7 +39,6 @@ def _decode(data: bytes) -> tuple[str, bool]:
 
 
 class Connection:
-
     def __init__(self, host: Host, client: paramiko.SSHClient):
         self.host = host
         self._client = client
@@ -51,12 +51,14 @@ class Connection:
         command = shlex.join(argv)
         log.info(f"Running on '{self.host.name}': {command}")
         try:
-            stdin, stdout, stderr = self._client.exec_command(command, timeout=COMMAND_TIMEOUT)
+            stdin, stdout, stderr = self._client.exec_command(
+                command, timeout=COMMAND_TIMEOUT
+            )
             stdin.close()
             out, out_truncated = _decode(stdout.read())
             err, err_truncated = _decode(stderr.read())
             exit_status = stdout.channel.recv_exit_status()
-        except (socket.timeout, TimeoutError):
+        except socket.timeout, TimeoutError:
             raise RemoteError(f"Command timed out on host '{self.host.name}'")
         except (paramiko.SSHException, OSError) as e:
             log.warning(f"Command failed on '{self.host.name}': {e!r}")
@@ -95,19 +97,29 @@ def connect(host: Host) -> Iterator[Connection]:
                 timeout=CONNECT_TIMEOUT,
             )
         except paramiko.BadHostKeyException:
-            log.error(f"Host key for '{host.name}' does not match the configured host_key")
-            raise RemoteError(f"Host key for '{host.name}' does not match the pinned key. Do not retry; tell the user.")
+            log.error(
+                f"Host key for '{host.name}' does not match the configured host_key"
+            )
+            raise RemoteError(
+                f"Host key for '{host.name}' does not match the pinned key. Do not retry; tell the user."
+            )
         except paramiko.AuthenticationException:
-            raise RemoteError(f"Authentication to host '{host.name}' failed. Do not retry; tell the user.")
+            raise RemoteError(
+                f"Authentication to host '{host.name}' failed. Do not retry; tell the user."
+            )
         except paramiko.SSHException as e:
             # RejectPolicy raises a plain SSHException when the server offers a key type other than host_key's
             log.error(f"Could not connect to '{host.name}': {e}")
             if "known_hosts" in str(e):
-                raise RemoteError(f"Host '{host.name}' did not offer the configured host key type. Do not retry; tell the user.")
+                raise RemoteError(
+                    f"Host '{host.name}' did not offer the configured host key type. Do not retry; tell the user."
+                )
             raise RemoteError(f"Could not connect to host '{host.name}'")
         except (socket.timeout, OSError) as e:
             log.warning(f"Could not connect to '{host.name}': {e!r}")
-            raise RemoteError(f"Could not connect to host '{host.name}': unreachable or timed out")
+            raise RemoteError(
+                f"Could not connect to host '{host.name}': unreachable or timed out"
+            )
 
         yield Connection(host, client)
     finally:

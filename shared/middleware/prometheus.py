@@ -1,6 +1,7 @@
+import time
+
 from fastmcp.server.middleware import Middleware
 from prometheus_client import Counter, Histogram
-import time
 
 TOOL_CALLS = Counter(
     "mcp_tool_calls_total",
@@ -14,11 +15,11 @@ TOOL_DURATION = Histogram(
     ["tool"],
 )
 
-class PrometheusMiddleware(Middleware):
 
+class PrometheusMiddleware(Middleware):
     """
     Sits right before the tool call. Will log metrics for Prometheus such as:
-    
+
     - Number of tool calls (errors and successful calls).
     - Duration of the tool calls.
     """
@@ -47,6 +48,4 @@ class PrometheusMiddleware(Middleware):
         finally:
             TOOL_DURATION.labels(
                 tool=tool,
-            ).observe(
-                time.perf_counter() - start
-            )
+            ).observe(time.perf_counter() - start)

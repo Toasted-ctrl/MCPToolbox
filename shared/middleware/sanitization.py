@@ -7,16 +7,16 @@ SAFE_EXCEPTIONS: tuple[type[Exception], ...] = (
     TypeError,
     KeyError,
     NotImplementedError,
-    NotFoundError
+    NotFoundError,
 )
 
 GENERIC_MESSAGE = "An internal error occured. Please try again later."
 
-class SanitizedErrorMiddleware(Middleware):
 
+class SanitizedErrorMiddleware(Middleware):
     """
     Sits between ErrorHandlingMiddleware and tool execution.
-    
+
     - Exceptions in SAFE_EXCEPTIONS pass through unchanged.
     - Everything else is replaced with a generic RuntimeError
     so that database details, file paths, hostnames, etc.
@@ -27,14 +27,14 @@ class SanitizedErrorMiddleware(Middleware):
         self,
         *,
         generic_message: str = GENERIC_MESSAGE,
-        safe_exceptions: tuple[type[Exception], ...] | None = None
+        safe_exceptions: tuple[type[Exception], ...] | None = None,
     ):
         self.generic_message = generic_message
         self.safe_exceptions = safe_exceptions or SAFE_EXCEPTIONS
 
     async def on_call_tool(self, request, call_next):
         return await self._safe_call(call_next, request)
-    
+
     async def _safe_call(self, call_next, request):
         try:
             return await call_next(request)
@@ -44,11 +44,10 @@ class SanitizedErrorMiddleware(Middleware):
             if self._is_safe_cause(exc):
                 raise
             raise RuntimeError(self.generic_message) from None
-        
+
     def _is_safe_cause(self, exc: Exception) -> bool:
-        
         """Walk the exception chain looking for a safe root cause."""
-        
+
         # NOTE: This step is required, as FastMCP wraps errors in ToolError.
         # We'd never find the true error, and allowing ToolError as safe would just mean we're passing
         # through every error again.

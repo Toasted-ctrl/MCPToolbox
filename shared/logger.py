@@ -1,13 +1,14 @@
 import logging
 import sys
 
+
 def get_logger(
     name: str = "DEFAULT_NAME",
     level: int = logging.DEBUG,
     fmt: str = "%(levelname)-9s %(asctime)s | Func: %(funcName)s | Mod: %(module)s | %(message)s",
-    datefmt: str = "%Y-%m-%d %H:%M:%S"
+    datefmt: str = "%Y-%m-%d %H:%M:%S",
 ) -> logging.Logger:
-    
+
     logger = logging.getLogger(name=name)
     logger.setLevel(level=level)
 
