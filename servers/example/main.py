@@ -5,6 +5,10 @@ from shared.logger import get_logger
 from .config import config
 from .server import mcp
 
+# Importing the tool modules registers their tools on `mcp`. Ruff's F401
+# (unused import) is disabled for main.py so these aren't removed.
+from .tools import files, iterate_list_dicts, sum_integers
+
 if __name__ == "__main__":
     log = get_logger(name=config.MCP_NAME)
     log.info(f"Starting Prometheus endpoint at port {config.PROMETHEUS_PORT}")

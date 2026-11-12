@@ -19,16 +19,20 @@ dependencies = [
 packages = ["shared", "servers"]
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 plugins = ["pydantic.mypy"]
 ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 88
-target-version = "py314"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# main.py imports tool modules only so their tools get registered.
+"servers/*/main.py" = ["F401"]
 
 [dependency-groups]
 dev = [

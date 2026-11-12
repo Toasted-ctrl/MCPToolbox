@@ -83,4 +83,4 @@ kubectl apply -f servers/runescape/k8s/
 
 ## Contributing
 
-PRs are very welcome! If you have improvements, new servers, tools, or ideas, feel free to open a pull request.
+PRs are very welcome! If you have improvements, new servers, tools, or ideas, feel free to open a pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to set up the repository, add tools and servers, and run the checks.

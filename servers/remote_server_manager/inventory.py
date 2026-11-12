@@ -59,7 +59,7 @@ def _parse_host_key(value: str) -> paramiko.PKey:
                 return paramiko.PKey.from_type_string(
                     field, base64.b64decode(fields[i + 1])
                 )
-            except paramiko.SSHException, ValueError, binascii.Error:
+            except (paramiko.SSHException, ValueError, binascii.Error):
                 continue
     raise ValueError("expected a public key like 'ssh-ed25519 AAAA...'")
 
@@ -68,7 +68,7 @@ def _parse_private_key(value: str) -> paramiko.PKey:
     for key_class in (paramiko.Ed25519Key, paramiko.ECDSAKey, paramiko.RSAKey):
         try:
             return key_class.from_private_key(io.StringIO(value))
-        except paramiko.SSHException, ValueError:
+        except (paramiko.SSHException, ValueError):
             continue
     raise ConfigurationError(
         "SSH_PRIVATE_KEY is not a valid, unencrypted Ed25519, ECDSA or RSA private key"

@@ -58,7 +58,7 @@ class Connection:
             out, out_truncated = _decode(stdout.read())
             err, err_truncated = _decode(stderr.read())
             exit_status = stdout.channel.recv_exit_status()
-        except socket.timeout, TimeoutError:
+        except (socket.timeout, TimeoutError):
             raise RemoteError(f"Command timed out on host '{self.host.name}'")
         except (paramiko.SSHException, OSError) as e:
             log.warning(f"Command failed on '{self.host.name}': {e!r}")

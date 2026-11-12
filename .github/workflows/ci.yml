@@ -48,7 +48,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.12 matches the Docker images; 3.14 matches the mypy/ruff target.
+        # 3.12 matches the Docker images and the mypy/ruff target; 3.14 is the newest release.
         python-version: ["3.12", "3.14"]
     steps:
       - uses: actions/checkout@v4
